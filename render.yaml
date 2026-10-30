@@ -1,0 +1,39 @@
+services:
+  - type: web
+    name: educore
+    runtime: rust
+    plan: free
+    buildCommand: cargo build --release --locked -j 1
+    startCommand: ./target/release/educore
+    healthCheckPath: /health
+    envVars:
+      - key: DATABASE_URL
+        sync: false
+      - key: SUPABASE_URL
+        sync: false
+      - key: SUPABASE_SECRET_KEY
+        sync: false
+      - key: APP_BASE_URL
+        sync: false
+      - key: MEDIA_BACKEND
+        value: supabase
+      - key: SUPABASE_STORAGE_BUCKET
+        value: educore-audio
+      - key: COOKIE_SECURE
+        value: "true"
+      - key: DB_POOL_SIZE
+        value: "2"
+      - key: MEDIA_QUOTA_MB
+        value: "200"
+      - key: MAIL_MODE
+        value: disabled
+      - key: REGISTRATION_ENABLED
+        value: "false"
+      - key: AI_PROVIDER
+        value: groq
+      - key: GROQ_API_KEY
+        sync: false
+      - key: AI_MODEL
+        value: openai/gpt-oss-20b
+      - key: AI_DAILY_LIMIT
+        value: "10"

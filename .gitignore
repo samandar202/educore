@@ -1,0 +1,11 @@
+/target
+.env
+.env.*
+!.env.example
+*.dump
+server.env
+*.db
+*.db-wal
+*.db-shm
+/data/
+/backups/

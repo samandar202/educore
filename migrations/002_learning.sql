@@ -1,0 +1,30 @@
+ALTER TABLE users ADD archived BOOLEAN NOT NULL DEFAULT false;
+ALTER TABLE users ADD email_verified BOOLEAN NOT NULL DEFAULT false;
+ALTER TABLE study_groups ADD archived BOOLEAN NOT NULL DEFAULT false;
+ALTER TABLE assignments ADD archived BOOLEAN NOT NULL DEFAULT false;
+ALTER TABLE assignments ADD answer_mode TEXT NOT NULL DEFAULT 'text' CHECK(answer_mode IN ('text','audio'));
+CREATE TABLE courses(id BIGSERIAL PRIMARY KEY,academy_id BIGINT NOT NULL REFERENCES academies(id),title TEXT NOT NULL,description TEXT NOT NULL,level TEXT NOT NULL,created_by BIGINT NOT NULL,archived BOOLEAN NOT NULL DEFAULT false,created_at TIMESTAMPTZ NOT NULL DEFAULT now(),UNIQUE(academy_id,id),FOREIGN KEY(academy_id,created_by) REFERENCES users(academy_id,id));
+CREATE TABLE course_lessons(id BIGSERIAL PRIMARY KEY,academy_id BIGINT NOT NULL,course_id BIGINT NOT NULL,module_title TEXT NOT NULL,title TEXT NOT NULL,content TEXT NOT NULL,resource_url TEXT NOT NULL DEFAULT '',position INT NOT NULL CHECK(position BETWEEN 1 AND 1000),UNIQUE(academy_id,id),FOREIGN KEY(academy_id,course_id) REFERENCES courses(academy_id,id));
+ALTER TABLE study_groups ADD course_id BIGINT;
+ALTER TABLE study_groups ADD FOREIGN KEY(academy_id,course_id) REFERENCES courses(academy_id,id);
+ALTER TABLE assignments ADD lesson_id BIGINT;
+ALTER TABLE assignments ADD FOREIGN KEY(academy_id,lesson_id) REFERENCES course_lessons(academy_id,id);
+CREATE TABLE media_files(id TEXT PRIMARY KEY,academy_id BIGINT NOT NULL,owner_id BIGINT NOT NULL,mime TEXT NOT NULL,size_bytes BIGINT NOT NULL CHECK(size_bytes>0),purpose TEXT NOT NULL CHECK(purpose IN ('answer','feedback')),created_at TIMESTAMPTZ NOT NULL DEFAULT now(),UNIQUE(academy_id,id),FOREIGN KEY(academy_id,owner_id) REFERENCES users(academy_id,id));
+ALTER TABLE submissions ADD audio_id TEXT;
+ALTER TABLE submissions ADD feedback_audio_id TEXT;
+ALTER TABLE submissions ADD retry_allowed BOOLEAN NOT NULL DEFAULT false;
+ALTER TABLE submissions ADD FOREIGN KEY(academy_id,audio_id) REFERENCES media_files(academy_id,id);
+ALTER TABLE submissions ADD FOREIGN KEY(academy_id,feedback_audio_id) REFERENCES media_files(academy_id,id);
+CREATE TABLE submission_versions(id BIGSERIAL PRIMARY KEY,submission_id BIGINT NOT NULL REFERENCES submissions(id),academy_id BIGINT NOT NULL,assignment_id BIGINT NOT NULL,student_id BIGINT NOT NULL,revision INT NOT NULL,answer TEXT NOT NULL,audio_id TEXT,score INT,feedback TEXT,feedback_audio_id TEXT,submitted_at TIMESTAMPTZ NOT NULL,reviewed_at TIMESTAMPTZ,UNIQUE(submission_id,revision),FOREIGN KEY(academy_id,assignment_id) REFERENCES assignments(academy_id,id),FOREIGN KEY(academy_id,student_id) REFERENCES users(academy_id,id),FOREIGN KEY(academy_id,audio_id) REFERENCES media_files(academy_id,id),FOREIGN KEY(academy_id,feedback_audio_id) REFERENCES media_files(academy_id,id));
+CREATE FUNCTION keep_submission_version() RETURNS trigger AS $$ BEGIN
+IF NEW.revision>OLD.revision THEN
+INSERT INTO submission_versions(submission_id,academy_id,assignment_id,student_id,revision,answer,audio_id,score,feedback,feedback_audio_id,submitted_at,reviewed_at) VALUES(OLD.id,OLD.academy_id,OLD.assignment_id,OLD.student_id,OLD.revision,OLD.answer,OLD.audio_id,OLD.score,OLD.feedback,OLD.feedback_audio_id,OLD.submitted_at,OLD.reviewed_at);
+END IF; RETURN NEW; END; $$ LANGUAGE plpgsql;
+CREATE TRIGGER submission_history BEFORE UPDATE ON submissions FOR EACH ROW EXECUTE FUNCTION keep_submission_version();
+CREATE TABLE calendar_events(id BIGSERIAL PRIMARY KEY,academy_id BIGINT NOT NULL,group_id BIGINT NOT NULL,teacher_id BIGINT NOT NULL,title TEXT NOT NULL,starts_at TIMESTAMPTZ NOT NULL,ends_at TIMESTAMPTZ NOT NULL,cancelled BOOLEAN NOT NULL DEFAULT false,CHECK(ends_at>starts_at),FOREIGN KEY(academy_id,group_id) REFERENCES study_groups(academy_id,id),FOREIGN KEY(academy_id,teacher_id) REFERENCES users(academy_id,id));
+CREATE INDEX calendar_time_idx ON calendar_events(academy_id,starts_at,ends_at);
+CREATE TABLE notifications(id BIGSERIAL PRIMARY KEY,academy_id BIGINT NOT NULL,user_id BIGINT NOT NULL,title TEXT NOT NULL,body TEXT NOT NULL,dedupe TEXT,read_at TIMESTAMPTZ,created_at TIMESTAMPTZ NOT NULL DEFAULT now(),UNIQUE(user_id,dedupe),FOREIGN KEY(academy_id,user_id) REFERENCES users(academy_id,id));
+CREATE TABLE account_tokens(token_hash TEXT PRIMARY KEY,user_id BIGINT NOT NULL REFERENCES users(id),purpose TEXT NOT NULL CHECK(purpose IN ('reset','verify')),expires_at TIMESTAMPTZ NOT NULL,created_at TIMESTAMPTZ NOT NULL DEFAULT now());
+CREATE TABLE mail_jobs(id BIGSERIAL PRIMARY KEY,recipient TEXT NOT NULL,subject TEXT NOT NULL,body TEXT NOT NULL,attempts INT NOT NULL DEFAULT 0,status TEXT NOT NULL DEFAULT 'pending',last_error TEXT,available_at TIMESTAMPTZ NOT NULL DEFAULT now(),created_at TIMESTAMPTZ NOT NULL DEFAULT now());
+CREATE INDEX notifications_user_idx ON notifications(academy_id,user_id,id DESC);
+CREATE INDEX versions_student_idx ON submission_versions(academy_id,student_id);

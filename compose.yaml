@@ -1,0 +1,19 @@
+services:
+  db:
+    image: postgres:16
+    environment:
+      POSTGRES_DB: educore
+      POSTGRES_USER: educore
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Create .env from .env.example first}
+    ports:
+      - "127.0.0.1:5432:5432"
+    volumes:
+      - educore_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U educore -d educore"]
+      interval: 3s
+      timeout: 3s
+      retries: 20
+    restart: unless-stopped
+volumes:
+  educore_pgdata:
