@@ -26,7 +26,8 @@ pub fn signup_open() -> bool {
 /// Yagona akademiya (birinchi ochilgani).
 pub async fn the_academy(db: &sqlx::PgPool) -> Result<Option<(i64, String, String)>> {
     Ok(
-        sqlx::query_as("SELECT id,slug,name FROM academies ORDER BY id LIMIT 1")
+        // Faol egasi bor akademiya ustun; bo'lmasa birinchisi.
+        sqlx::query_as("SELECT a.id,a.slug,a.name FROM academies a ORDER BY EXISTS(SELECT 1 FROM users u WHERE u.academy_id=a.id AND u.role='owner' AND u.archived=false) DESC, a.id LIMIT 1")
             .fetch_optional(db)
             .await?,
     )

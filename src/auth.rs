@@ -195,10 +195,14 @@ pub struct Login {
 }
 pub async fn login(State(app): State<App>, Json(input): Json<Login>) -> Result<impl IntoResponse> {
     let mut slug = input.slug.trim().to_lowercase();
-    if slug.is_empty() {
-        slug = crate::v7::the_academy(&app.db).await?.map(|a| a.1).unwrap_or_default();
-    }
     let email = input.email.trim().to_lowercase();
+    if slug.is_empty() {
+        // Email qaysi akademiyada bo'lsa, o'sha; bir nechtasida bo'lsa asosiy akademiya ustun.
+        let main = crate::v7::the_academy(&app.db).await?.map(|a| a.0).unwrap_or(0);
+        slug = sqlx::query_scalar("SELECT a.slug FROM users u JOIN academies a ON a.id=u.academy_id WHERE u.email=$1 AND u.archived=false ORDER BY (a.id=$2) DESC, a.id LIMIT 1")
+            .bind(&email).bind(main).fetch_optional(&app.db).await?
+            .unwrap_or_else(|| "-".into());
+    }
     limited(&app, format!("login:{slug}:{email}"), 10)?;
     if input.password.len() > 512 {
         return Err(bad("Parol juda uzun."));

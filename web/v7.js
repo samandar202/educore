@@ -32,7 +32,7 @@ renderAuth = async function (register) {
   if (!register || !c.signup) {
     // Akademiya bitta: slug maydoni yashiriladi va avtomatik to'ldiriladi.
     const slug = box.querySelector('[name=slug]');
-    if (slug) { slug.value = c.academy.slug; slug.closest('label').hidden = true; }
+    if (slug) { slug.value = ''; slug.required = false; slug.closest('label').hidden = true; }
     const p = box.querySelector('p'); if (p) p.textContent = c.academy.name + ' kabinetiga email va parolingiz bilan kiring.';
     return;
   }
