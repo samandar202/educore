@@ -87,6 +87,8 @@ pub fn router(app: App) -> Router {
  .route("/v4.js",get(||async{([("content-type","text/javascript; charset=utf-8")],include_str!("../web/v4.js"))}))
  .route("/v5.js",get(||async{([("content-type","text/javascript; charset=utf-8")],include_str!("../web/v5.js"))}))
  .route("/v5.css",get(||async{([("content-type","text/css; charset=utf-8")],include_str!("../web/v5.css"))}))
+ .route("/v6.css",get(||async{([("content-type","text/css; charset=utf-8")],include_str!("../web/v6.css"))}))
+ .route("/v6.js",get(||async{([("content-type","text/javascript; charset=utf-8")],include_str!("../web/v6.js"))}))
  .route("/api/config",get(||async{Json(json!({"registration":std::env::var("REGISTRATION_ENABLED").unwrap_or_else(|_|"true".into())=="true","recovery":mail::enabled()}))}))
  .route("/health",get(||async{Json(json!({"status":"ok","version":"0.5.1"}))}))
  .route("/api/register",post(auth::register)).route("/api/login",post(auth::login)).route("/api/logout",post(auth::logout))

@@ -1,0 +1,115 @@
+/* EduCore V6 — 3D dizayn qatlami (v5.css ustidan) */
+:root{--v6-edge:#ddd2ee;--v6-shadow:72,46,124;--v6-glass:rgba(255,255,255,.72)}
+
+/* ---------- Fon: yumshoq harakatlanuvchi gradient ---------- */
+html.v6 body{background:#f4f1fa}
+html.v6 body::before{content:'';position:fixed;inset:-20%;z-index:-1;pointer-events:none;
+  background:
+    radial-gradient(40% 35% at 15% 20%,#e9dcff 0,transparent 70%),
+    radial-gradient(35% 30% at 85% 15%,#dff0e4 0,transparent 70%),
+    radial-gradient(45% 40% at 75% 85%,#fde8da 0,transparent 70%),
+    radial-gradient(40% 40% at 20% 85%,#e4ecff 0,transparent 70%);
+  animation:v6mesh 26s ease-in-out infinite alternate}
+@keyframes v6mesh{to{transform:translate3d(4%,-3%,0) rotate(6deg) scale(1.05)}}
+html.v6 .landing{background:transparent}
+html.v6 .auth-shell{background:transparent}
+
+/* ---------- 3D sahna (globus) ---------- */
+.clay-scene .globe3d{position:absolute;inset:-6% -4%;width:108%;height:112%;z-index:0;pointer-events:none}
+html.v6 .clay-ring{display:none}
+html.v6 .clay-orb{z-index:2;width:118px;height:118px;border-radius:32px}
+html.v6 .clay-orb span{font-size:72px;letter-spacing:-9px;padding-right:9px}
+html.v6 .landing .clay-orb{width:140px;height:140px;border-radius:38px}
+html.v6 .landing .clay-orb span{font-size:86px}
+html.v6 .clay-platform{z-index:1;bottom:2%}
+html.v6 .float-chip{z-index:3;background:rgba(255,255,255,.82);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);
+  box-shadow:0 1px 0 #fff inset,0 3px 0 var(--v6-edge),0 18px 30px -10px rgba(var(--v6-shadow),.28)}
+html.v6 .clay-spark{z-index:3;animation:v6spin 14s linear infinite}
+@keyframes v6spin{to{transform:rotate(345deg)}}
+.auth-art .clay-scene .globe3d{opacity:.95}
+
+/* ---------- Kartalar: qalinlikka ega "plita" ---------- */
+html.v6 .panel,html.v6 .stat,html.v6 .group-card,html.v6 .assignment-card,html.v6 .focus-strip,html.v6 .public-lead,html.v6 .day-column{
+  border:1px solid rgba(255,255,255,.9);
+  background:
+    radial-gradient(420px circle at var(--lx,50%) var(--ly,-40%),rgba(255,255,255,.95),transparent 45%),
+    linear-gradient(180deg,#ffffff,#fbf9fe);
+  box-shadow:0 1px 0 #fff inset,0 3px 0 var(--v6-edge),0 4px 0 #d3c6e8,0 22px 40px -18px rgba(var(--v6-shadow),.30)}
+html.v6 .studio-hero{box-shadow:0 1px 0 #fff inset,0 4px 0 #d6c4ea,0 5px 0 #cbb6e3,0 30px 50px -22px rgba(var(--v6-shadow),.38)}
+html.v6 .depth-card{transform-style:preserve-3d;
+  transform:perspective(900px) rotateX(var(--rx,0deg)) rotateY(var(--ry,0deg)) translateY(var(--lift,0));
+  transition:transform .25s cubic-bezier(.2,.8,.2,1),box-shadow .25s}
+html.v6 .depth-card:hover{--lift:-6px;box-shadow:0 1px 0 #fff inset,0 3px 0 var(--v6-edge),0 4px 0 #d3c6e8,0 34px 50px -16px rgba(var(--v6-shadow),.38)}
+html.v6 .depth-card .mini-icon{transform:translateZ(26px)}
+html.v6 .depth-card strong{transform:translateZ(18px)}
+html.v6 .stat strong{display:block;background:linear-gradient(180deg,#3a2f4c,#6d55a0);-webkit-background-clip:text;background-clip:text;color:transparent}
+
+/* "Loy" ikonkalar */
+html.v6 .mini-icon{position:relative;box-shadow:inset 2px 3px 4px rgba(255,255,255,.85),inset -3px -4px 8px rgba(0,0,0,.08),0 3px 0 rgba(0,0,0,.06),0 8px 14px -4px rgba(var(--v6-shadow),.25)}
+
+/* ---------- Tugmalar: bosiladigan 3D ---------- */
+html.v6 .btn{position:relative;background-image:linear-gradient(180deg,rgba(255,255,255,.22),rgba(255,255,255,0) 55%);
+  box-shadow:0 1px 0 rgba(255,255,255,.35) inset,0 4px 0 #563aa8,0 12px 20px -8px rgba(86,58,168,.55);
+  transition:transform .12s,box-shadow .12s}
+html.v6 .btn:hover{transform:translateY(-2px);box-shadow:0 1px 0 rgba(255,255,255,.35) inset,0 6px 0 #563aa8,0 18px 26px -10px rgba(86,58,168,.6)}
+html.v6 .btn:active{transform:translateY(3px);box-shadow:0 1px 0 rgba(255,255,255,.35) inset,0 1px 0 #563aa8,0 4px 8px -4px rgba(86,58,168,.5)}
+html.v6 .btn.dark{box-shadow:0 1px 0 rgba(255,255,255,.18) inset,0 4px 0 #120e17,0 12px 20px -8px rgba(20,14,26,.55)}
+html.v6 .btn.dark:hover{box-shadow:0 1px 0 rgba(255,255,255,.18) inset,0 6px 0 #120e17,0 18px 26px -10px rgba(20,14,26,.6)}
+html.v6 .btn.dark:active{box-shadow:0 1px 0 rgba(255,255,255,.18) inset,0 1px 0 #120e17}
+html.v6 .btn.ghost,html.v6 .btn.glass{background-color:#fff;box-shadow:0 1px 0 #fff inset,0 4px 0 #ddd3ec,0 12px 18px -10px rgba(var(--v6-shadow),.3)}
+html.v6 .btn.ghost:hover,html.v6 .btn.glass:hover{box-shadow:0 1px 0 #fff inset,0 6px 0 #ddd3ec,0 18px 24px -12px rgba(var(--v6-shadow),.35)}
+html.v6 .btn.ghost:active,html.v6 .btn.glass:active{box-shadow:0 1px 0 #ddd3ec}
+html.v6 .btn.soft{box-shadow:0 1px 0 #fff inset,0 4px 0 #d3c4ef,0 10px 16px -10px rgba(var(--v6-shadow),.3)}
+html.v6 .btn.soft:active{box-shadow:0 1px 0 #d3c4ef}
+html.v6 .btn.danger{box-shadow:0 4px 0 #efc9c3}
+html.v6 .btn.danger:active{box-shadow:0 1px 0 #efc9c3}
+html.v6 .btn:disabled{transform:none}
+
+/* ---------- Yon panel ---------- */
+html.v6 .sidebar{background:linear-gradient(180deg,#2c2535,#221d29 60%,#1d1923);box-shadow:inset -1px 0 0 rgba(255,255,255,.05),12px 0 40px -20px rgba(20,10,30,.5)}
+html.v6 .brand-mark{box-shadow:inset 1px 2px 2px rgba(255,255,255,.55),inset -2px -3px 5px rgba(40,10,80,.35),0 3px 0 #5a3aa6,0 10px 18px -6px rgba(90,58,166,.7)}
+html.v6 .nav-item{transition:transform .15s,background .15s}
+html.v6 .nav-item:hover{transform:translateX(3px)}
+html.v6 .nav-item.active{background:linear-gradient(110deg,#9a78e4,#7350c4);box-shadow:inset 0 1px 0 rgba(255,255,255,.25),0 3px 0 #4b318f,0 10px 22px -8px rgba(120,80,210,.8)}
+html.v6 .academy-switch{box-shadow:inset 0 1px 0 rgba(255,255,255,.06),0 3px 0 #18141d}
+
+html.v6 .main{margin:0 auto}
+/* ---------- Yuqori panel: shisha ---------- */
+html.v6 .topbar{position:sticky;top:0;z-index:30;margin:0 -36px;padding:0 36px;background:rgba(246,243,251,.72);
+  backdrop-filter:blur(16px) saturate(1.4);-webkit-backdrop-filter:blur(16px) saturate(1.4);border-bottom:1px solid rgba(221,210,238,.7)}
+html.v6 .round-btn,html.v6 .calendar-pill{box-shadow:0 1px 0 #fff inset,0 3px 0 #e2d9ee}
+
+/* ---------- Maydonlar: ichkariga botgan ---------- */
+html.v6 input,html.v6 select,html.v6 textarea{background:#fbfaff;border-color:#e3dcee;box-shadow:inset 0 2px 4px rgba(60,40,100,.06);transition:box-shadow .15s,border-color .15s}
+html.v6 input:focus,html.v6 select:focus,html.v6 textarea:focus{outline:none;border-color:#a98be0;box-shadow:inset 0 2px 4px rgba(60,40,100,.05),0 0 0 4px rgba(150,115,225,.2)}
+html.v6 .auth-toggle{box-shadow:inset 0 2px 5px rgba(60,40,100,.08)}
+html.v6 .auth-toggle .selected{box-shadow:0 1px 0 #fff inset,0 3px 0 #ddd3ec,0 8px 14px -8px rgba(var(--v6-shadow),.35)}
+
+/* ---------- Landing ---------- */
+html.v6 .landing-nav{border-color:rgba(200,185,225,.5)}
+html.v6 .landing-hero h1{text-shadow:0 1px 0 #e4dbf3,0 2px 0 #dacfee,0 3px 0 #d0c3e9,0 4px 0 #c6b7e3,0 5px 0 #bcacdd,0 14px 24px rgba(var(--v6-shadow),.22)}
+html.v6 .landing-hero h1 .serif{background:linear-gradient(120deg,#9b6ff0,#6f4dc4 60%,#c08ad8);-webkit-background-clip:text;background-clip:text;color:transparent;text-shadow:none;filter:drop-shadow(0 4px 0 #d9cbf0) drop-shadow(0 12px 14px rgba(110,77,196,.25))}
+html.v6 .feature-strip{border:0;gap:22px;padding:10px 0 40px;perspective:1200px}
+html.v6 .feature-strip article{border:1px solid rgba(255,255,255,.9)!important;border-radius:22px;padding:30px 28px;
+  background:radial-gradient(420px circle at var(--lx,50%) var(--ly,-40%),#fff,transparent 45%),linear-gradient(180deg,#fff,#faf7ff);
+  box-shadow:0 1px 0 #fff inset,0 4px 0 var(--v6-edge),0 5px 0 #d3c6e8,0 26px 40px -20px rgba(var(--v6-shadow),.35)}
+html.v6 .feature-strip span{display:inline-grid;place-items:center;width:42px;height:42px;border-radius:13px;color:#fff;font-weight:700;font-size:13px;
+  background:linear-gradient(140deg,#b596f0,#7650cd);box-shadow:inset 1px 2px 3px rgba(255,255,255,.5),0 3px 0 #5a3aa6,0 10px 16px -6px rgba(90,58,166,.6);transform:translateZ(30px)}
+html.v6 .feature-strip article:nth-child(2) span{background:linear-gradient(140deg,#c9e29a,#88a85a);box-shadow:inset 1px 2px 3px rgba(255,255,255,.5),0 3px 0 #6c8a45,0 10px 16px -6px rgba(108,138,69,.6)}
+html.v6 .feature-strip article:nth-child(3) span{background:linear-gradient(140deg,#f8c9a6,#de8f62);box-shadow:inset 1px 2px 3px rgba(255,255,255,.5),0 3px 0 #b86c43,0 10px 16px -6px rgba(184,108,67,.6)}
+html.v6 .feature-strip h3{transform:translateZ(16px)}
+
+/* ---------- Kirish animatsiyasi ---------- */
+html.v6 .v6-rise:not(.v6-in){opacity:0}
+html.v6 .v6-rise.v6-in{animation:v6rise .75s cubic-bezier(.2,.85,.25,1) var(--d,0ms) backwards}
+@keyframes v6rise{from{opacity:0;transform:perspective(900px) rotateX(16deg) translateY(34px) scale(.97)}}
+
+@media(max-width:760px){
+  html.v6 .topbar{margin:0 -17px;padding:0 17px}
+  html.v6 .feature-strip{gap:14px}
+  html.v6 .landing-hero h1{text-shadow:0 1px 0 #dacfee,0 2px 0 #cfc2e9,0 3px 0 #c4b5e3,0 10px 18px rgba(var(--v6-shadow),.2)}
+}
+@media(max-width:1100px){html.v6 .topbar{margin:0 -22px;padding:0 22px}}
+@media(min-width:1500px){html.v6 .topbar{margin:0 -50px;padding:0 50px}}
+@media(prefers-reduced-motion:reduce){html.v6 body::before{animation:none}html.v6 .v6-rise:not(.v6-in){opacity:1}}
+@media print{html.v6 body::before,.globe3d{display:none}}
