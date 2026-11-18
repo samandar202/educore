@@ -30,7 +30,7 @@ async fn bootstrap(State(app): State<App>, h: HeaderMap) -> Result<Json<Value>> 
     ai["used"] = json!(used);
     ai["daily_limit"] = json!(crate::ai::daily_limit());
     Ok(Json(
-        json!({"invoices":invoices,"payments":payments,"drafts":drafts,"ai":ai,"setup":if u.role=="owner"{json!({"storage":crate::storage::backend().unwrap_or_default(),"secure_cookie":app.secure_cookie,"mail_enabled":crate::mail::enabled(),"registration_open":std::env::var("REGISTRATION_ENABLED").unwrap_or_else(|_|"true".into())=="true"})}else{Value::Null}}),
+        json!({"invoices":invoices,"payments":payments,"drafts":drafts,"ai":ai,"setup":if u.role=="owner"{json!({"storage":crate::storage::backend().unwrap_or_default(),"secure_cookie":app.secure_cookie,"mail_enabled":crate::mail::enabled(),"registration_open":crate::v7::signup_open()})}else{Value::Null}}),
     ))
 }
 #[derive(Deserialize)]

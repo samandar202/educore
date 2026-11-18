@@ -77,8 +77,11 @@ pub async fn current(app: &App, headers: &HeaderMap) -> Result<User> {
     let t = token(headers)
         .filter(|s| s.len() == 64)
         .ok_or_else(|| Error(StatusCode::UNAUTHORIZED, "Hisobingizga kiring.".into()))?;
-    sqlx::query_as("SELECT u.id,u.academy_id,u.name,u.email,u.role,u.group_id FROM users u JOIN sessions s ON s.user_id=u.id WHERE s.token_hash=$1 AND s.expires_at>now() AND u.archived=false")
+    sqlx::query_as("SELECT u.id,u.academy_id,u.name,u.email,u.role,u.group_id FROM users u JOIN sessions s ON s.user_id=u.id WHERE s.token_hash=$1 AND s.expires_at>now() AND u.archived=false AND u.pending=false")
  .bind(digest(t)).fetch_optional(&app.db).await?.ok_or_else(||Error(StatusCode::UNAUTHORIZED,"Sessiya tugadi. Qayta kiring.".into()))
+}
+pub fn session_cookie(token: &str, secure: bool) -> String {
+    cookie(token, secure, 43200)
 }
 fn cookie(token: &str, secure: bool, age: i64) -> String {
     format!(
@@ -129,9 +132,14 @@ pub async fn register(
     State(app): State<App>,
     Json(input): Json<Register>,
 ) -> Result<impl IntoResponse> {
-    if std::env::var("REGISTRATION_ENABLED").unwrap_or_else(|_| "true".into()) != "true" {
+    // Yagona akademiya: egasi faqat bitta. Akademiya ochilgach bu yo'l yopiladi.
+    if !crate::v7::signup_open() {
+        return Err(bad("Ro‘yxatdan o‘tish yopilgan."));
+    }
+    let multi = std::env::var("EDUCORE_ALLOW_MULTI_ACADEMY").as_deref() == Ok("1"); // faqat testlar uchun
+    if !multi && crate::v7::the_academy(&app.db).await?.is_some() {
         return Err(bad(
-            "Yangi akademiya ochish yopilgan. Mavjud hisobingiz bilan kiring.",
+            "Akademiya allaqachon ochilgan. Kirish yoki ro‘yxatdan o‘tish bo‘limidan foydalaning.",
         ));
     }
     limited(&app, "register-global".into(), 20)?;
@@ -150,6 +158,11 @@ pub async fn register(
     }
     let hashed = hash(input.password).await?;
     let mut tx = app.db.begin().await?;
+    sqlx::query("SELECT pg_advisory_xact_lock(770001)").execute(&mut *tx).await?;
+    let exists: i64 = sqlx::query_scalar("SELECT count(*) FROM academies").fetch_one(&mut *tx).await?;
+    if exists > 0 && !multi {
+        return Err(bad("Akademiya allaqachon ochilgan."));
+    }
     let aid: i64 =
         sqlx::query_scalar("INSERT INTO academies(slug,name) VALUES($1,$2) RETURNING id")
             .bind(&slug)
@@ -175,19 +188,23 @@ pub async fn register(
 }
 #[derive(Deserialize)]
 pub struct Login {
+    #[serde(default)]
     slug: String,
     email: String,
     password: String,
 }
 pub async fn login(State(app): State<App>, Json(input): Json<Login>) -> Result<impl IntoResponse> {
-    let slug = input.slug.trim().to_lowercase();
+    let mut slug = input.slug.trim().to_lowercase();
+    if slug.is_empty() {
+        slug = crate::v7::the_academy(&app.db).await?.map(|a| a.1).unwrap_or_default();
+    }
     let email = input.email.trim().to_lowercase();
     limited(&app, format!("login:{slug}:{email}"), 10)?;
     if input.password.len() > 512 {
         return Err(bad("Parol juda uzun."));
     }
-    let row:Option<(i64,String)>=sqlx::query_as("SELECT u.id,u.password_hash FROM users u JOIN academies a ON a.id=u.academy_id WHERE a.slug=$1 AND u.email=$2 AND u.archived=false").bind(slug).bind(email).fetch_optional(&app.db).await?;
-    let (id, hashed) = row.unwrap_or((0, String::new()));
+    let row:Option<(i64,String,bool)>=sqlx::query_as("SELECT u.id,u.password_hash,u.pending FROM users u JOIN academies a ON a.id=u.academy_id WHERE a.slug=$1 AND u.email=$2 AND u.archived=false").bind(slug).bind(email).fetch_optional(&app.db).await?;
+    let (id, hashed, pending) = row.unwrap_or((0, String::new(), false));
     // Always perform Argon2 for unknown accounts too, avoiding a cheap enumeration path.
     let enabled = !hashed.is_empty();
     let checked = if hashed.is_empty() {
@@ -199,6 +216,12 @@ pub async fn login(State(app): State<App>, Json(input): Json<Login>) -> Result<i
         return Err(Error(
             StatusCode::UNAUTHORIZED,
             "Akademiya, email yoki parol noto‘g‘ri.".into(),
+        ));
+    }
+    if pending {
+        return Err(Error(
+            StatusCode::FORBIDDEN,
+            "Hisobingiz akademiya rahbari tasdig‘ini kutmoqda. Tasdiqlangach kira olasiz.".into(),
         ));
     }
     let mut tx = app.db.begin().await?;

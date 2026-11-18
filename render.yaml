@@ -28,7 +28,7 @@ services:
       - key: MAIL_MODE
         value: disabled
       - key: REGISTRATION_ENABLED
-        value: "false"
+        value: "true"
       - key: AI_PROVIDER
         value: groq
       - key: GROQ_API_KEY

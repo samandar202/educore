@@ -34,7 +34,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     });
     let secure = std::env::var("COOKIE_SECURE").unwrap_or_default() == "true";
     let listener = tokio::net::TcpListener::bind(&address).await?;
-    println!("EduCore V5.1: http://{address} | Kabinet: /app");
+    println!("EduCore V6: http://{address} | Kabinet: /app");
     let db_keep = db.clone();
     let app = App::new(db, secure);
     let worker = tokio::spawn(educore::mail::worker(app.clone()));

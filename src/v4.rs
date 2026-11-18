@@ -205,7 +205,7 @@ async fn group_edit(
             .fetch_optional(&mut *tx)
             .await?
             .ok_or_else(missing)?;
-    let n:i64=sqlx::query_scalar("SELECT count(*) FROM users WHERE academy_id=$1 AND id=$2 AND role IN ('owner','teacher') AND archived=false").bind(u.academy_id).bind(i.teacher_id).fetch_one(&mut *tx).await?;
+    let n:i64=sqlx::query_scalar("SELECT count(*) FROM users WHERE academy_id=$1 AND id=$2 AND role IN ('owner','teacher') AND archived=false AND pending=false").bind(u.academy_id).bind(i.teacher_id).fetch_one(&mut *tx).await?;
     if n == 0 {
         return Err(bad("Faol ustoz tanlang."));
     }

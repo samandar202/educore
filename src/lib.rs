@@ -7,6 +7,7 @@ pub mod platform;
 pub mod storage;
 pub mod v4;
 pub mod v5;
+pub mod v7;
 use axum::{
     extract::{DefaultBodyLimit, State},
     http::{HeaderMap, StatusCode},
@@ -89,8 +90,10 @@ pub fn router(app: App) -> Router {
  .route("/v5.css",get(||async{([("content-type","text/css; charset=utf-8")],include_str!("../web/v5.css"))}))
  .route("/v6.css",get(||async{([("content-type","text/css; charset=utf-8")],include_str!("../web/v6.css"))}))
  .route("/v6.js",get(||async{([("content-type","text/javascript; charset=utf-8")],include_str!("../web/v6.js"))}))
- .route("/api/config",get(||async{Json(json!({"registration":std::env::var("REGISTRATION_ENABLED").unwrap_or_else(|_|"true".into())=="true","recovery":mail::enabled()}))}))
- .route("/health",get(||async{Json(json!({"status":"ok","version":"0.5.1"}))}))
+ .route("/v7.css",get(||async{([("content-type","text/css; charset=utf-8")],include_str!("../web/v7.css"))}))
+ .route("/v7.js",get(||async{([("content-type","text/javascript; charset=utf-8")],include_str!("../web/v7.js"))}))
+ .route("/api/config",get(||async{Json(json!({"registration":v7::signup_open(),"recovery":mail::enabled()}))}))
+ .route("/health",get(||async{Json(json!({"status":"ok","version":"0.6.0"}))}))
  .route("/api/register",post(auth::register)).route("/api/login",post(auth::login)).route("/api/logout",post(auth::logout))
  .route("/api/me",get(auth::me)).route("/api/password",post(auth::change_password))
  .route("/api/bootstrap",get(platform::bootstrap))
@@ -103,7 +106,7 @@ pub fn router(app: App) -> Router {
  .route("/api/leads/{id}",patch(platform::update_lead))
  .route("/api/public/{slug}",get(platform::public_academy).post(platform::public_lead))
  .route("/api/attendance",post(platform::attendance))
- .merge(v4::routes()).merge(mail::routes()).merge(v5::routes())
+ .merge(v4::routes()).merge(mail::routes()).merge(v5::routes()).merge(v7::routes())
  .layer(DefaultBodyLimit::max(32768))
  .merge(media::routes())
  .layer(axum::middleware::from_fn(|request:axum::extract::Request,next:axum::middleware::Next|async move{

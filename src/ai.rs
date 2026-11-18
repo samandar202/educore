@@ -383,7 +383,10 @@ async fn generate(
     Json(i): Json<Input>,
 ) -> Result<Json<Value>> {
     let u = current(&app, &h).await?;
-    u.staff()?;
+    // AI faqat o'qituvchilar uchun.
+    if u.role != "teacher" {
+        return Err(Error(StatusCode::FORBIDDEN, "AI yordamchisi faqat o‘qituvchilar uchun.".into()));
+    }
     i.validate()?;
     let config = Config::read()?;
     if config.key.is_empty() {

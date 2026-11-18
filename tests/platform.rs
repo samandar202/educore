@@ -878,7 +878,7 @@ async fn v4_audio_courses_calendar_history_and_recovery() {
 async fn cloud_rls_and_registration_closed() {
     let app = app().await;
     let n:i64=sqlx::query_scalar("SELECT count(*) FROM pg_class c JOIN pg_namespace n ON n.oid=c.relnamespace WHERE n.nspname='public' AND c.relkind='r' AND c.relrowsecurity").fetch_one(&app.db).await.unwrap();
-    assert_eq!(n, 23);
+    assert_eq!(n, 24);
     for role in ["anon", "authenticated"] {
         let allowed: bool =
             sqlx::query_scalar("SELECT has_table_privilege($1,'public.users','SELECT')")
@@ -1066,9 +1066,10 @@ async fn v5_finance_settings_ai_permissions_and_reversal() {
         .as_str()
         .unwrap()
         .contains("ANTHROPIC_API_KEY"));
+    // V6: AI faqat o'qituvchilar uchun; rahbar ham foydalana olmaydi.
     assert_eq!(
         req(&app, "POST", "/api/ai/generate", &owner, ai).await.0,
-        StatusCode::SERVICE_UNAVAILABLE
+        StatusCode::FORBIDDEN
     );
     for (name, value) in [("AI_PROVIDER", old_provider), ("AI_MODEL", old_model)] {
         match value {
