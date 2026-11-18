@@ -3,6 +3,7 @@ services:
     name: educore
     runtime: rust
     plan: free
+    region: singapore
     buildCommand: cargo build --release --locked -j 1
     startCommand: ./target/release/educore
     healthCheckPath: /health
@@ -12,8 +13,6 @@ services:
       - key: SUPABASE_URL
         sync: false
       - key: SUPABASE_SECRET_KEY
-        sync: false
-      - key: APP_BASE_URL
         sync: false
       - key: MEDIA_BACKEND
         value: supabase
