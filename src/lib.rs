@@ -79,10 +79,25 @@ pub fn valid_text(s: &str, min: usize, max: usize) -> bool {
 pub async fn migrate(db: &PgPool) -> std::result::Result<(), sqlx::migrate::MigrateError> {
     sqlx::migrate!("./migrations").run(db).await
 }
+/// HTML ichidagi .js/.css havolalariga kontent xeshini qo'shadi: brauzer fayllarni
+/// keshlaydi, yangi versiya chiqqanda esa havola o'zgargani uchun yangisini oladi.
+fn versioned(page: usize) -> &'static str {
+    static PAGES: std::sync::OnceLock<[String; 2]> = std::sync::OnceLock::new();
+    &PAGES.get_or_init(|| {
+        let assets = [
+            include_str!("../web/style.css"), include_str!("../web/app.js"), include_str!("../web/v4.js"),
+            include_str!("../web/v5.css"), include_str!("../web/v5.js"), include_str!("../web/v6.css"),
+            include_str!("../web/v6.js"), include_str!("../web/v7.css"), include_str!("../web/v7.js"),
+        ];
+        let v = auth::digest(&assets.concat())[..10].to_string();
+        let fix = |h: &str| h.replace(".js\"", &format!(".js?v={v}\"")).replace(".css\"", &format!(".css?v={v}\""));
+        [fix(include_str!("../web/index.html")), fix(include_str!("../web/app.html"))]
+    })[page]
+}
 pub fn router(app: App) -> Router {
     Router::new()
- .route("/",get(||async{Html(include_str!("../web/index.html"))}))
- .route("/app",get(||async{Html(include_str!("../web/app.html"))}))
+ .route("/",get(||async{Html(versioned(0))}))
+ .route("/app",get(||async{Html(versioned(1))}))
  .route("/style.css",get(||async{([("content-type","text/css; charset=utf-8")],include_str!("../web/style.css"))}))
  .route("/app.js",get(||async{([("content-type","text/javascript; charset=utf-8")],include_str!("../web/app.js"))}))
  .route("/v4.js",get(||async{([("content-type","text/javascript; charset=utf-8")],include_str!("../web/v4.js"))}))
@@ -111,9 +126,15 @@ pub fn router(app: App) -> Router {
  .merge(media::routes())
  .layer(axum::middleware::from_fn(|request:axum::extract::Request,next:axum::middleware::Next|async move{
    if !matches!(*request.method(),axum::http::Method::GET|axum::http::Method::HEAD|axum::http::Method::OPTIONS) && request.headers().get("x-educore").and_then(|h|h.to_str().ok())!=Some("1") {return forbidden().into_response()}
+   let asset=matches!(request.uri().path().rsplit('.').next(),Some("js"|"css"))&&request.uri().query().is_some_and(|q|q.starts_with("v="));
    let mut response=next.run(request).await;
    for (k,v) in [("cache-control","no-store"),("x-content-type-options","nosniff"),("x-frame-options","DENY"),("referrer-policy","same-origin"),("content-security-policy","default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; media-src 'self' blob:; connect-src 'self'; object-src 'none'; base-uri 'none'; frame-ancestors 'none'; form-action 'self'")] {response.headers_mut().insert(axum::http::HeaderName::from_static(k),v.parse().unwrap());}
+   if asset {response.headers_mut().insert("cache-control",axum::http::HeaderValue::from_static("public, max-age=31536000, immutable"));}
    response
+ }))
+ .layer(tower_http::compression::CompressionLayer::new().compress_when({
+   use tower_http::compression::predicate::{DefaultPredicate,NotForContentType,Predicate};
+   DefaultPredicate::new().and(NotForContentType::const_new("audio/")).and(NotForContentType::const_new("video/")).and(NotForContentType::const_new("application/octet-stream"))
  }))
  .with_state(app)
 }
