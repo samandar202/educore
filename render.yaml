@@ -37,3 +37,5 @@ services:
         value: openai/gpt-oss-20b
       - key: AI_DAILY_LIMIT
         value: "10"
+      - key: KEEP_ALIVE
+        value: "true"

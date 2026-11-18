@@ -82,7 +82,7 @@ Mahalliy bazadan ma’lumot import qilingan bo‘lsa, mavjud EduCore hisobidan k
 
 ## Bepul rejalar chegarasi
 
-Render Free 15 daqiqa tashrif bo‘lmasa uxlaydi, qayta ochilish sekinlashishi mumkin. Uning lokal diski restart/redeploy/uyquda yo‘qoladi; shu sabab audio Supabase bucketda turishi kerak. Kvota va reja shartlarini Dashboard’da kuzating. Bepul reja doimiy uzluksiz production xizmati uchun kafolat bermaydi.
+Render Free 15 daqiqa tashrif bo‘lmasa uxlaydi. Shuning uchun server ichida keep-alive bor: har 10 daqiqada Render avtomatik beradigan `RENDER_EXTERNAL_URL`/health manziliga so‘rov yuboradi va bazaga `SELECT 1` qiladi — Render uxlamaydi, Supabase ham faolsizlik sabab pauzaga tushmaydi. Bitta xizmat 24/7 ishlashi oyiga ~744 soat, Free kvota 750 soat; ikkinchi bepul xizmat ochmang. O‘chirish: `KEEP_ALIVE=false`. Qo‘shimcha kafolat uchun UptimeRobot yoki cron-job.org’da `https://SIZNING-NOM.onrender.com/health` manziliga 5 daqiqalik monitor qo‘shishingiz mumkin (bepul). Uning lokal diski restart/redeploy/uyquda yo‘qoladi; shu sabab audio Supabase bucketda turishi kerak. Kvota va reja shartlarini Dashboard’da kuzating. Bepul reja doimiy uzluksiz production xizmati uchun kafolat bermaydi.
 
 MAIL_MODE=disabled bo‘lgani uchun email tasdiqlash/parol tiklash xatlari yuborilmaydi; egasi kabinetdan parolni yangilaydi. Render Free SMTP portlarini cheklaydi. Onlayn to‘lov olish integratsiyasi yo‘q; moliyaviy bo‘lim ichki qayd yuritadi.
 
