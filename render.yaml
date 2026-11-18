@@ -21,7 +21,7 @@ services:
       - key: COOKIE_SECURE
         value: "true"
       - key: DB_POOL_SIZE
-        value: "2"
+        value: "8"
       - key: MEDIA_QUOTA_MB
         value: "200"
       - key: MAIL_MODE

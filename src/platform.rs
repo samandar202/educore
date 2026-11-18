@@ -20,25 +20,31 @@ async fn rows(app: &App, u: &User, sql: &str) -> Result<Value> {
 }
 pub async fn bootstrap(State(app): State<App>, headers: HeaderMap) -> Result<Json<Value>> {
     let u = current(&app, &headers).await?;
-    let academy: Value = sqlx::query_scalar("SELECT to_jsonb(a) FROM academies a WHERE id=$1")
-        .bind(u.academy_id)
-        .fetch_one(&app.db)
-        .await?;
-    let groups=rows(&app,&u,"SELECT COALESCE(jsonb_agg(to_jsonb(x) ORDER BY x.id DESC),'[]') FROM (SELECT g.*, t.name AS teacher_name,(SELECT count(*) FROM users s WHERE s.academy_id=g.academy_id AND s.group_id=g.id AND s.role='student') AS student_count FROM study_groups g JOIN users t ON t.id=g.teacher_id AND t.academy_id=g.academy_id WHERE g.academy_id=$1 AND ($3='owner' OR ($3='teacher' AND g.teacher_id=$2) OR g.id IN (SELECT group_id FROM users WHERE academy_id=$1 AND (id=$2 OR id IN(SELECT student_id FROM parent_links WHERE academy_id=$1 AND parent_id=$2))))) x").await?;
-    let users=rows(&app,&u,"SELECT COALESCE(jsonb_agg(to_jsonb(x) ORDER BY x.id DESC),'[]') FROM (SELECT p.id,p.name,p.email,p.role,p.group_id,g.name AS group_name,p.created_at,p.archived,p.email_verified FROM users p LEFT JOIN study_groups g ON g.id=p.group_id AND g.academy_id=p.academy_id WHERE p.academy_id=$1 AND p.pending=false AND ($3='owner' OR p.id=$2 OR ($3='teacher' AND p.group_id IN(SELECT id FROM study_groups WHERE academy_id=$1 AND teacher_id=$2)) OR ($3='parent' AND p.id IN(SELECT student_id FROM parent_links WHERE academy_id=$1 AND parent_id=$2)))) x").await?;
-    let assignments=rows(&app,&u,"SELECT COALESCE(jsonb_agg(to_jsonb(x) ORDER BY x.id DESC),'[]') FROM (SELECT a.*,g.name AS group_name FROM assignments a JOIN study_groups g ON g.id=a.group_id AND g.academy_id=a.academy_id WHERE a.academy_id=$1 AND ($3='owner' OR ($3='teacher' AND g.teacher_id=$2) OR a.group_id IN(SELECT group_id FROM users WHERE academy_id=$1 AND (id=$2 OR id IN(SELECT student_id FROM parent_links WHERE academy_id=$1 AND parent_id=$2))))) x").await?;
-    let submissions=rows(&app,&u,"SELECT COALESCE(jsonb_agg(to_jsonb(x) ORDER BY x.id DESC),'[]') FROM (SELECT s.*,p.name AS student_name,a.title,a.skill,g.name AS group_name FROM submissions s JOIN users p ON p.id=s.student_id AND p.academy_id=s.academy_id JOIN assignments a ON a.id=s.assignment_id AND a.academy_id=s.academy_id JOIN study_groups g ON g.id=a.group_id AND g.academy_id=a.academy_id WHERE s.academy_id=$1 AND ($3='owner' OR ($3='teacher' AND g.teacher_id=$2) OR s.student_id=$2 OR ($3='parent' AND s.student_id IN(SELECT student_id FROM parent_links WHERE academy_id=$1 AND parent_id=$2)))) x").await?;
-    let attendance=rows(&app,&u,"SELECT COALESCE(jsonb_agg(to_jsonb(x) ORDER BY x.lesson_date DESC),'[]') FROM (SELECT a.* FROM attendance a JOIN study_groups g ON g.id=a.group_id AND g.academy_id=a.academy_id WHERE a.academy_id=$1 AND ($3='owner' OR ($3='teacher' AND g.teacher_id=$2) OR a.student_id=$2 OR ($3='parent' AND a.student_id IN(SELECT student_id FROM parent_links WHERE academy_id=$1 AND parent_id=$2)))) x").await?;
-    let leads = if u.staff().is_ok() {
-        sqlx::query_scalar::<_,Value>("SELECT COALESCE(jsonb_agg(to_jsonb(x) ORDER BY x.id DESC),'[]') FROM (SELECT * FROM leads WHERE academy_id=$1 ORDER BY id DESC LIMIT 500) x").bind(u.academy_id).fetch_one(&app.db).await?
-    } else {
-        json!([])
+    // So'rovlar parallel: server va baza orasidagi kechikish bir marta to'lanadi.
+    let staff = u.staff().is_ok();
+    let academy_q = async {
+        sqlx::query_scalar::<_, Value>("SELECT to_jsonb(a) FROM academies a WHERE id=$1")
+            .bind(u.academy_id)
+            .fetch_one(&app.db)
+            .await
+            .map_err(Error::from)
     };
-    let audit = if u.staff().is_ok() {
-        rows(&app,&u,"SELECT COALESCE(jsonb_agg(to_jsonb(x) ORDER BY x.id DESC),'[]') FROM (SELECT a.id,a.action,a.detail,a.created_at,u.name AS actor_name FROM audit_log a LEFT JOIN users u ON u.id=a.actor_id WHERE a.academy_id=$1 AND ($3='owner' OR a.actor_id=$2) ORDER BY a.id DESC LIMIT 100) x").await?
-    } else {
-        json!([])
+    let leads_q = async {
+        if staff { Ok::<Value, Error>(sqlx::query_scalar::<_,Value>("SELECT COALESCE(jsonb_agg(to_jsonb(x) ORDER BY x.id DESC),'[]') FROM (SELECT * FROM leads WHERE academy_id=$1 ORDER BY id DESC LIMIT 500) x").bind(u.academy_id).fetch_one(&app.db).await.map_err(Error::from)?) } else { Ok(json!([])) }
     };
+    let audit_q = async {
+        if staff { rows(&app,&u,"SELECT COALESCE(jsonb_agg(to_jsonb(x) ORDER BY x.id DESC),'[]') FROM (SELECT a.id,a.action,a.detail,a.created_at,u.name AS actor_name FROM audit_log a LEFT JOIN users u ON u.id=a.actor_id WHERE a.academy_id=$1 AND ($3='owner' OR a.actor_id=$2) ORDER BY a.id DESC LIMIT 100) x").await } else { Ok(json!([])) }
+    };
+    let (academy, groups, users, assignments, submissions, attendance, leads, audit) = tokio::try_join!(
+        academy_q,
+        rows(&app,&u,"SELECT COALESCE(jsonb_agg(to_jsonb(x) ORDER BY x.id DESC),'[]') FROM (SELECT g.*, t.name AS teacher_name,(SELECT count(*) FROM users s WHERE s.academy_id=g.academy_id AND s.group_id=g.id AND s.role='student') AS student_count FROM study_groups g JOIN users t ON t.id=g.teacher_id AND t.academy_id=g.academy_id WHERE g.academy_id=$1 AND ($3='owner' OR ($3='teacher' AND g.teacher_id=$2) OR g.id IN (SELECT group_id FROM users WHERE academy_id=$1 AND (id=$2 OR id IN(SELECT student_id FROM parent_links WHERE academy_id=$1 AND parent_id=$2))))) x"),
+        rows(&app,&u,"SELECT COALESCE(jsonb_agg(to_jsonb(x) ORDER BY x.id DESC),'[]') FROM (SELECT p.id,p.name,p.email,p.role,p.group_id,g.name AS group_name,p.created_at,p.archived,p.email_verified FROM users p LEFT JOIN study_groups g ON g.id=p.group_id AND g.academy_id=p.academy_id WHERE p.academy_id=$1 AND p.pending=false AND ($3='owner' OR p.id=$2 OR ($3='teacher' AND p.group_id IN(SELECT id FROM study_groups WHERE academy_id=$1 AND teacher_id=$2)) OR ($3='parent' AND p.id IN(SELECT student_id FROM parent_links WHERE academy_id=$1 AND parent_id=$2)))) x"),
+        rows(&app,&u,"SELECT COALESCE(jsonb_agg(to_jsonb(x) ORDER BY x.id DESC),'[]') FROM (SELECT a.*,g.name AS group_name FROM assignments a JOIN study_groups g ON g.id=a.group_id AND g.academy_id=a.academy_id WHERE a.academy_id=$1 AND ($3='owner' OR ($3='teacher' AND g.teacher_id=$2) OR a.group_id IN(SELECT group_id FROM users WHERE academy_id=$1 AND (id=$2 OR id IN(SELECT student_id FROM parent_links WHERE academy_id=$1 AND parent_id=$2))))) x"),
+        rows(&app,&u,"SELECT COALESCE(jsonb_agg(to_jsonb(x) ORDER BY x.id DESC),'[]') FROM (SELECT s.*,p.name AS student_name,a.title,a.skill,g.name AS group_name FROM submissions s JOIN users p ON p.id=s.student_id AND p.academy_id=s.academy_id JOIN assignments a ON a.id=s.assignment_id AND a.academy_id=s.academy_id JOIN study_groups g ON g.id=a.group_id AND g.academy_id=a.academy_id WHERE s.academy_id=$1 AND ($3='owner' OR ($3='teacher' AND g.teacher_id=$2) OR s.student_id=$2 OR ($3='parent' AND s.student_id IN(SELECT student_id FROM parent_links WHERE academy_id=$1 AND parent_id=$2)))) x"),
+        rows(&app,&u,"SELECT COALESCE(jsonb_agg(to_jsonb(x) ORDER BY x.lesson_date DESC),'[]') FROM (SELECT a.* FROM attendance a JOIN study_groups g ON g.id=a.group_id AND g.academy_id=a.academy_id WHERE a.academy_id=$1 AND ($3='owner' OR ($3='teacher' AND g.teacher_id=$2) OR a.student_id=$2 OR ($3='parent' AND a.student_id IN(SELECT student_id FROM parent_links WHERE academy_id=$1 AND parent_id=$2)))) x"),
+        leads_q,
+        audit_q
+    )?;
     Ok(Json(
         json!({"user":u,"academy":academy,"groups":groups,"users":users,"assignments":assignments,"submissions":submissions,"attendance":attendance,"leads":leads,"audit":audit}),
     ))

@@ -23,7 +23,7 @@ northflank.com → Sign up (GitHub bilan kirish qulay). Sandbox rejasi tanlansin
 | SUPABASE_STORAGE_BUCKET | educore-audio |
 | MEDIA_BACKEND | supabase |
 | COOKIE_SECURE | true |
-| DB_POOL_SIZE | 2 |
+| DB_POOL_SIZE | 8 |
 | MEDIA_QUOTA_MB | 200 |
 | MAIL_MODE | disabled |
 | REGISTRATION_ENABLED | true (o‘quvchi/ota-ona/o‘qituvchi o‘zi ro‘yxatdan o‘tadi; false — hammasini yopadi) |

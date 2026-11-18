@@ -14,18 +14,13 @@ pub fn routes() -> Router<App> {
 }
 async fn bootstrap(State(app): State<App>, h: HeaderMap) -> Result<Json<Value>> {
     let u = current(&app, &h).await?;
-    let invoices:Value=sqlx::query_scalar("SELECT COALESCE(jsonb_agg(to_jsonb(x) ORDER BY x.id DESC),'[]') FROM (SELECT i.*,s.name AS student_name,COALESCE((SELECT sum(p.amount) FROM payments p WHERE p.academy_id=i.academy_id AND p.invoice_id=i.id AND p.voided_at IS NULL),0)::bigint AS paid FROM invoices i JOIN users s ON s.id=i.student_id AND s.academy_id=i.academy_id WHERE i.academy_id=$1 AND ($2='owner' OR i.student_id=$3 OR ($2='parent' AND i.student_id IN(SELECT student_id FROM parent_links WHERE academy_id=$1 AND parent_id=$3))) ORDER BY i.id DESC LIMIT 1000) x").bind(u.academy_id).bind(&u.role).bind(u.id).fetch_one(&app.db).await?;
-    let payments:Value=sqlx::query_scalar("SELECT COALESCE(jsonb_agg(to_jsonb(x) ORDER BY x.created_at DESC),'[]') FROM (SELECT p.* FROM payments p JOIN invoices i ON i.id=p.invoice_id AND i.academy_id=p.academy_id WHERE p.academy_id=$1 AND ($2='owner' OR i.student_id=$3 OR ($2='parent' AND i.student_id IN(SELECT student_id FROM parent_links WHERE academy_id=$1 AND parent_id=$3))) ORDER BY p.created_at DESC LIMIT 2000) x").bind(u.academy_id).bind(&u.role).bind(u.id).fetch_one(&app.db).await?;
-    let drafts = if u.staff().is_ok() {
-        crate::ai::list(&app, &u).await?
-    } else {
-        json!([])
-    };
-    let used: i64 = if u.staff().is_ok() {
-        sqlx::query_scalar("SELECT count(*) FROM ai_drafts WHERE academy_id=$1 AND user_id=$2 AND created_at >= date_trunc('day',now() AT TIME ZONE 'UTC') AT TIME ZONE 'UTC'").bind(u.academy_id).bind(u.id).fetch_one(&app.db).await?
-    } else {
-        0
-    };
+    let staff = u.staff().is_ok();
+    let (invoices, payments, drafts, used) = tokio::try_join!(
+        async { sqlx::query_scalar("SELECT COALESCE(jsonb_agg(to_jsonb(x) ORDER BY x.id DESC),'[]') FROM (SELECT i.*,s.name AS student_name,COALESCE((SELECT sum(p.amount) FROM payments p WHERE p.academy_id=i.academy_id AND p.invoice_id=i.id AND p.voided_at IS NULL),0)::bigint AS paid FROM invoices i JOIN users s ON s.id=i.student_id AND s.academy_id=i.academy_id WHERE i.academy_id=$1 AND ($2='owner' OR i.student_id=$3 OR ($2='parent' AND i.student_id IN(SELECT student_id FROM parent_links WHERE academy_id=$1 AND parent_id=$3))) ORDER BY i.id DESC LIMIT 1000) x").bind(u.academy_id).bind(&u.role).bind(u.id).fetch_one(&app.db).await.map_err(Error::from) as Result<Value> },
+        async { sqlx::query_scalar("SELECT COALESCE(jsonb_agg(to_jsonb(x) ORDER BY x.created_at DESC),'[]') FROM (SELECT p.* FROM payments p JOIN invoices i ON i.id=p.invoice_id AND i.academy_id=p.academy_id WHERE p.academy_id=$1 AND ($2='owner' OR i.student_id=$3 OR ($2='parent' AND i.student_id IN(SELECT student_id FROM parent_links WHERE academy_id=$1 AND parent_id=$3))) ORDER BY p.created_at DESC LIMIT 2000) x").bind(u.academy_id).bind(&u.role).bind(u.id).fetch_one(&app.db).await.map_err(Error::from) as Result<Value> },
+        async { if staff { crate::ai::list(&app, &u).await } else { Ok(json!([])) } },
+        async { if staff { sqlx::query_scalar("SELECT count(*) FROM ai_drafts WHERE academy_id=$1 AND user_id=$2 AND created_at >= date_trunc('day',now() AT TIME ZONE 'UTC') AT TIME ZONE 'UTC'").bind(u.academy_id).bind(u.id).fetch_one(&app.db).await.map_err(Error::from) as Result<i64> } else { Ok(0i64) } }
+    )?;
     let mut ai = crate::ai::status();
     ai["used"] = json!(used);
     ai["daily_limit"] = json!(crate::ai::daily_limit());
